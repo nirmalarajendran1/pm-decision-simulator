@@ -6,13 +6,11 @@ let subscribersChart = null;
 let revenueChart = null;
 
 function buildDatasets(caseDef, simResult, showActualOverlay) {
-  const chosenOption = caseDef.decisionPoint.options.find(
-    (o) => o.id === simResult.optionId
-  );
+  const label = "Your combo (simulated)";
 
   const subscribersDatasets = [
     {
-      label: `${chosenOption.label.split(" — ")[0]} (simulated)`,
+      label,
       data: simResult.subscribersM,
       borderColor: "#2563eb",
       backgroundColor: "rgba(37, 99, 235, 0.12)",
@@ -22,7 +20,7 @@ function buildDatasets(caseDef, simResult, showActualOverlay) {
   ];
   const revenueDatasets = [
     {
-      label: `${chosenOption.label.split(" — ")[0]} (simulated)`,
+      label,
       data: simResult.revenueM,
       borderColor: "#0891b2",
       backgroundColor: "rgba(8, 145, 178, 0.12)",
@@ -31,7 +29,7 @@ function buildDatasets(caseDef, simResult, showActualOverlay) {
     },
   ];
 
-  if (showActualOverlay && simResult.optionId !== caseDef.actualOutcome.optionId) {
+  if (showActualOverlay && !isActualCombo(caseDef, simResult.combo)) {
     subscribersDatasets.push({
       label: "What actually happened",
       data: caseDef.actualOutcome.subscribersM,

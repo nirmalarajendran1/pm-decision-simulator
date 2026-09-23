@@ -1,5 +1,11 @@
 (function () {
   const caseDef = NETFLIX_PASSWORD_SHARING_CASE;
+  const state = { enforcement: null, pricing: null };
+
+  function findOptionLocal(decisionId, optionId) {
+    const decision = caseDef.decisionPoints.find((d) => d.id === decisionId);
+    return decision.options.find((o) => o.id === optionId);
+  }
 
   function renderBackground() {
     const el = document.getElementById("case-background");
@@ -21,49 +27,69 @@
     `;
   }
 
-  function renderDecisionPoint(selectedOptionId) {
+  function optionCardHtml(decisionId, option, selectedId) {
+    return `
+      <button class="option-card${option.id === selectedId ? " selected" : ""}" data-decision="${decisionId}" data-option="${option.id}">
+        <strong>${option.label}</strong>
+        <p>${option.description}</p>
+      </button>`;
+  }
+
+  function renderStep(decision, selectedId, stepNumber) {
+    return `
+      <div class="decision-step">
+        <div class="step-label">${decision.stepLabel}</div>
+        <h2>${decision.prompt}</h2>
+        <div class="option-list">
+          ${decision.options.map((o) => optionCardHtml(decision.id, o, selectedId)).join("")}
+        </div>
+      </div>`;
+  }
+
+  function renderDecisionPoints() {
     const el = document.getElementById("decision-point");
-    const { prompt, options } = caseDef.decisionPoint;
-    el.innerHTML = `
-      <h2>Your call</h2>
-      <p>${prompt}</p>
-      <div class="option-list">
-        ${options
-          .map(
-            (o) => `
-          <button class="option-card${o.id === selectedOptionId ? " selected" : ""}" data-option="${o.id}">
-            <strong>${o.label}</strong>
-            <p>${o.description}</p>
-          </button>`
-          )
-          .join("")}
-      </div>
-    `;
+    const [step1, step2] = caseDef.decisionPoints;
+
+    let html = renderStep(step1, state.enforcement, 1);
+    if (state.enforcement) {
+      html += renderStep(step2, state.pricing, 2);
+    }
+    el.innerHTML = html;
 
     el.querySelectorAll(".option-card").forEach((btn) => {
       btn.addEventListener("click", () => {
+        const decisionId = btn.getAttribute("data-decision");
         const optionId = btn.getAttribute("data-option");
-        renderDecisionPoint(optionId);
-        showResults(optionId);
+        state[decisionId] = optionId;
+        if (decisionId === "enforcement") {
+          state.pricing = null; // changing decision 1 resets decision 2
+          document.getElementById("results").classList.add("hidden");
+        }
+        renderDecisionPoints();
+        if (state.enforcement && state.pricing) {
+          showResults();
+        } else {
+          document.getElementById(decisionId === "enforcement" ? "decision-point" : "results")
+            .scrollIntoView({ behavior: "smooth", block: "start" });
+        }
       });
     });
   }
 
-  function formatDelta(simValue, actualValue) {
+  function formatDelta(simValue, actualValue, unit) {
     const diff = simValue - actualValue;
-    const sign = diff >= 0 ? "+" : "";
-    return `${sign}${diff.toFixed(1)}`;
+    const sign = diff >= 0 ? "+" : "-";
+    return `${sign}${unit}${Math.abs(diff).toFixed(1)}`;
   }
 
-  function renderStats(option, simResult) {
+  function renderStats(simResult) {
     const el = document.getElementById("stat-row");
     const lastQ = simResult.subscribersM.length - 1;
     const subs = simResult.subscribersM[lastQ];
     const rev = simResult.revenueM[lastQ];
     const actualSubs = caseDef.actualOutcome.subscribersM[lastQ];
     const actualRev = caseDef.actualOutcome.quarterlyRevenueM[lastQ];
-
-    const isActual = option.id === caseDef.actualOutcome.optionId;
+    const actual = isActualCombo(caseDef, simResult.combo);
 
     el.innerHTML = `
       <div class="stat">
@@ -75,24 +101,36 @@
         <div class="value">$${rev}M</div>
       </div>
       ${
-        isActual
+        actual
           ? ""
           : `<div class="stat">
               <div class="label">vs. what actually happened</div>
-              <div class="value">${formatDelta(subs, actualSubs)}M subs / $${formatDelta(rev, actualRev)}M rev</div>
+              <div class="value">${formatDelta(subs, actualSubs, "")}M subs / ${formatDelta(rev, actualRev, "$")}M rev</div>
             </div>`
       }
     `;
   }
 
-  function showResults(optionId) {
-    const option = caseDef.decisionPoint.options.find((o) => o.id === optionId);
-    const simResult = runSimulation(caseDef, optionId);
+  function showResults() {
+    const enforcementOpt = findOptionLocal("enforcement", state.enforcement);
+    const pricingOpt = findOptionLocal("pricing", state.pricing);
+    const simResult = runSimulation(caseDef, { enforcement: state.enforcement, pricing: state.pricing });
     const overlayToggle = document.getElementById("overlayToggle");
+    const actual = isActualCombo(caseDef, simResult.combo);
 
     document.getElementById("results").classList.remove("hidden");
-    document.getElementById("results-narrative").textContent = option.narrative;
-    renderStats(option, simResult);
+
+    const pricingNote = enforcementOpt.effectiveness === 0
+      ? "Since enforcement never happened, the pricing choice barely moves anything — there's nothing to price."
+      : pricingOpt.narrative;
+
+    document.getElementById("results-narrative").innerHTML = `
+      <p>${enforcementOpt.narrative}</p>
+      <p>${pricingNote}</p>
+      ${actual ? '<p><strong>This is the exact combination Netflix chose.</strong></p>' : ""}
+    `;
+
+    renderStats(simResult);
     renderCharts(caseDef, simResult, overlayToggle.checked);
 
     overlayToggle.onchange = () => {
@@ -104,5 +142,5 @@
 
   renderBackground();
   renderSources();
-  renderDecisionPoint(null);
+  renderDecisionPoints();
 })();
