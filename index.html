@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PM Decision Simulator</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <h1>PM Decision Simulator</h1>
+    <p class="tagline">
+      Product management case studies, but you make the call — then see a
+      quantitative simulation of how it plays out, compared to what actually happened.
+    </p>
+  </header>
+
+  <main id="app" class="container">
+    <section id="case-background" class="card"></section>
+
+    <section id="decision-point" class="card"></section>
+
+    <section id="results" class="card hidden">
+      <h2>Simulated outcome</h2>
+      <div id="results-narrative" class="narrative"></div>
+      <div class="stat-row" id="stat-row"></div>
+      <div class="charts">
+        <canvas id="subscribersChart" height="260"></canvas>
+        <canvas id="revenueChart" height="260"></canvas>
+      </div>
+      <label class="overlay-toggle">
+        <input type="checkbox" id="overlayToggle" checked />
+        Show what actually happened, for comparison
+      </label>
+      <p class="disclaimer">
+        Illustrative model calibrated to Netflix's publicly reported quarterly
+        results. Option A's numbers are close to the real reported figures by
+        design; options B and C are this project's own reasoned estimates of
+        how the same underlying mechanics would have played out under a
+        different decision — not verified Netflix data.
+      </p>
+    </section>
+
+    <section id="sources" class="card"></section>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      Built as a prototype exploring what an interactive, outcome-simulating
+      case study could look like for PM courses. New cases can be added as a
+      single file under <code>js/cases/</code> — no engine changes required.
+    </p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="js/cases/netflix-password-sharing.js"></script>
+  <script src="js/engine/simulation.js"></script>
+  <script src="js/engine/renderChart.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
